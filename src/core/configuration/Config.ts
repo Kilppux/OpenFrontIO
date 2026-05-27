@@ -150,11 +150,11 @@ export class Config {
   }
 
   defensePostDefenseBonus(): number {
-    return 5;
+    return 6;
   }
 
   defensePostSpeedBonus(): number {
-    return 3;
+    return 5;
   }
 
   playerTeams(): TeamCountConfig {
@@ -212,7 +212,7 @@ export class Config {
   trainSpawnRate(numPlayerFactories: number): number {
     // hyperbolic decay, midpoint at 10 factories
     // expected number of trains = numPlayerFactories  / trainSpawnRate(numPlayerFactories)
-    return (numPlayerFactories + 10) * 15;
+    return (numPlayerFactories + 10) * 10;
   }
   trainGold(
     rel: "self" | "team" | "ally" | "other",
@@ -224,14 +224,14 @@ export class Config {
     let baseGold: number;
     switch (rel) {
       case "ally":
-        baseGold = 35_000;
+        baseGold = 50_000;
         break;
       case "team":
       case "other":
-        baseGold = 25_000;
+        baseGold = 35_000;
         break;
       case "self":
-        baseGold = 10_000;
+        baseGold = 15_000;
         break;
     }
     const distPenalty = citiesVisited * 5_000;
@@ -246,7 +246,7 @@ export class Config {
     return 100;
   }
   railroadMaxSize(): number {
-    return 120;
+    return 150;
   }
 
   tradeShipGold(dist: number, player: Player | PlayerView): Gold {
@@ -265,7 +265,7 @@ export class Config {
     const decayRate = Math.LN2 / 50;
 
     // Approaches 0 as numTradeShips increase
-    const baseSpawnRate = 1 - sigmoid(numTradeShips, decayRate, 200);
+    const baseSpawnRate = 1 - sigmoid(numTradeShips, decayRate, 300);
 
     // Pity timer: increases spawn chance after consecutive rejections
     const rejectionModifier = 1 / (tradeShipSpawnRejections + 1);
@@ -371,7 +371,7 @@ export class Config {
         info = {
           cost: this.costWrapper(
             (numUnits: number) =>
-              Math.min(3_000_000, (numUnits + 1) * 1_500_000),
+              Math.min(1_000_000, (numUnits + 1) * 500_000),
             UnitType.SAMLauncher,
           ),
           constructionDuration: this.instantBuild()
@@ -583,11 +583,11 @@ export class Config {
         break;
       case TerrainType.Highland:
         mag = 100;
-        speed = 20;
+        speed = 25;
         break;
       case TerrainType.Mountain:
         mag = 120;
-        speed = 25;
+        speed = 35;
         break;
       default:
         throw new Error(`terrain type ${type} not supported`);
@@ -639,15 +639,15 @@ export class Config {
       const largeDefenderAttackDebuff = 0.7 + 0.3 * defenseSig;
 
       let largeAttackBonus = 1;
-      if (attacker.numTilesOwned() > 100_000) {
-        largeAttackBonus = Math.sqrt(100_000 / attacker.numTilesOwned()) ** 0.7;
+      if (attacker.numTilesOwned() > 1000_000) {
+        largeAttackBonus = Math.sqrt(1000_000 / attacker.numTilesOwned()) ** 0.7;
       }
       let largeAttackerSpeedBonus = 1;
-      if (attacker.numTilesOwned() > 100_000) {
-        largeAttackerSpeedBonus = (100_000 / attacker.numTilesOwned()) ** 0.6;
+      if (attacker.numTilesOwned() > 1000_000) {
+        largeAttackerSpeedBonus = (1000_000 / attacker.numTilesOwned()) ** 0.6;
       }
 
-      const defenderTroopLoss = defender.troops() / defender.numTilesOwned();
+      const defenderTroopLoss = defender.troops() / defender.numTilesOwned() * 1.5;
       const traitorMod = defender.isTraitor() ? this.traitorDefenseDebuff() : 1;
       const currentAttackerLoss =
         within(defender.troops() / attackTroops, 0.6, 2) *
@@ -657,15 +657,15 @@ export class Config {
         largeAttackBonus *
         traitorMod;
       const altAttackerLoss =
-        1.3 * defenderTroopLoss * (mag / 100) * traitorMod;
+        1.8 * defenderTroopLoss * (mag / 100) * traitorMod;
       const attackerTroopLoss =
-        0.6 * currentAttackerLoss + 0.4 * altAttackerLoss;
+        0.6 * currentAttackerLoss + 0.6 * altAttackerLoss;
 
       return {
         attackerTroopLoss,
         defenderTroopLoss,
         tilesPerTickUsed:
-          within(defender.troops() / (5 * attackTroops), 0.2, 1.5) *
+          within(defender.troops() / (1 * attackTroops), 0.05, 1.75) *
           speed *
           largeDefenderSpeedDebuff *
           largeAttackerSpeedBonus *
@@ -678,7 +678,7 @@ export class Config {
         defenderTroopLoss: 0,
         tilesPerTickUsed: within(
           (2000 * Math.max(10, speed)) / attackTroops,
-          5,
+          3,
           100,
         ),
       };
@@ -693,7 +693,7 @@ export class Config {
   ): number {
     if (defender.isPlayer()) {
       return (
-        within(((5 * attackTroops) / defender.troops()) * 2, 0.01, 0.5) *
+        within(((3 * attackTroops) / defender.troops()), 0.01, 1.0) *
         numAdjacentTilesWithEnemy *
         3
       );
@@ -773,13 +773,13 @@ export class Config {
 
     switch (this._gameConfig.difficulty) {
       case Difficulty.Easy:
-        return maxTroops * 0.5;
+        return maxTroops * 1.0;
       case Difficulty.Medium:
-        return maxTroops * 0.75;
+        return maxTroops * 1.0;
       case Difficulty.Hard:
         return maxTroops * 1; // Like humans
       case Difficulty.Impossible:
-        return maxTroops * 1.25;
+        return maxTroops * 1.1;
       default:
         assertNever(this._gameConfig.difficulty);
     }
@@ -794,7 +794,7 @@ export class Config {
     toAdd *= ratio;
 
     if (player.type() === PlayerType.Bot) {
-      toAdd *= 0.5;
+      toAdd *= 0.85;
     }
 
     if (player.type() === PlayerType.Nation) {
@@ -837,7 +837,7 @@ export class Config {
       case UnitType.AtomBomb:
         return { inner: 12, outer: 30 };
       case UnitType.HydrogenBomb:
-        return { inner: 80, outer: 100 };
+        return { inner: 40, outer: 80 };
     }
     throw new Error(`Unknown nuke type: ${unitType}`);
   }
@@ -847,7 +847,7 @@ export class Config {
   }
 
   defaultNukeSpeed(): number {
-    return 8;
+    return 7;
   }
 
   defaultNukeTargetableRange(): number {
@@ -860,11 +860,11 @@ export class Config {
 
   samRange(level: number): number {
     // rational growth function (level 1 = 70, level 5 just above hydro range, asymptotically approaches 150)
-    return this.maxSamRange() - 480 / (level + 5);
+    return this.maxSamRange() - 480 / (level + 6);
   }
 
   maxSamRange(): number {
-    return 150;
+    return 180;
   }
 
   defaultSamMissileSpeed(): number {
@@ -899,7 +899,7 @@ export class Config {
   }
 
   warshipPatrolRange(): number {
-    return 100;
+    return 70;
   }
 
   warshipTargettingRange(): number {
@@ -947,6 +947,6 @@ export class Config {
   }
 
   allianceExtensionPromptOffset(): number {
-    return 300; // 30 seconds before expiration
+    return 450; // 30 seconds before expiration
   }
 }
